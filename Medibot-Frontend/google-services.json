@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "83780973929",
+    "project_id": "medibot-b4a6c",
+    "storage_bucket": "medibot-b4a6c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:83780973929:android:85e5550a76d2f2b89079f8",
+        "android_client_info": {
+          "package_name": "com.medibot.telemedicine"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCT4yLRX5MajyOeNxL8nx9_kiCt5O0UWio"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
