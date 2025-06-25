@@ -5,9 +5,12 @@ import (
 	// "strconv"
 	// "strings"
 
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx"
 	"medibot.go/db/repo"
 )
 
@@ -31,6 +34,7 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 
 	r.POST("/user", h.handleCreateUser)
 	r.GET("/user/", h.handleGetUserByEmail)
+	r.POST("/chat", h.handleConversation)
 	
 	return r
 }
@@ -71,4 +75,81 @@ func (h *MedibotHandler) handleGetUserByEmail(c *gin.Context){
 
 	c.JSON(http.StatusOK, user)
 }
+
+type createConversationParams struct {
+	UserID string `json:"userId"`
+	Content string `json:"content"`
+	Sender string `json:"sender"`
+	ConId string `json:"conId"` // Optional, if provided, will update the conversation
+}
+//handle conversation
+func (h *MedibotHandler) handleConversation(c *gin.Context) {
+	var req createConversationParams
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Parse user ID
+	userID, err := uuid.Parse(req.UserID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var conID uuid.UUID
+
+	if req.ConId != "" {
+		// Parse conversation ID
+		conID, err = uuid.Parse(req.ConId)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+			return
+		}
+
+		// Check if conversation exists
+		_, err := h.querier.GetConversation(c.Request.Context(), repo.GetConversationParams{
+			ID:     conID,
+			UserID: userID,
+		})
+
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				// Conversation not found → create a new one
+				conID, err = h.querier.CreateConversation(c, userID)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversation"})
+					return
+				}
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"details": err.Error()})
+				return
+			}
+		}
+	} else {
+		// No conId provided → create a new conversation
+		conID, err = h.querier.CreateConversation(c, userID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create conversation"})
+			return
+		}
+	}
+
+	// Create message
+	if err := h.querier.CreateMessage(c, repo.CreateMessageParams{
+		ConID:   conID,
+		Sender:  req.Sender,
+		Content: req.Content,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create message"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"conversationId": conID,
+		"message":        "Message stored successfully",
+	})
+}
+
 

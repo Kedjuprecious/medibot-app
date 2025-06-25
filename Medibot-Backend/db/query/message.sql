@@ -14,7 +14,11 @@ WHERE email = $1;
 -- name: CreateConversation :one
 INSERT INTO conversation (user_id)
 VALUES ($1)
-RETURNING *;
+RETURNING id;
+
+-- name: GetConversation :one
+SELECT id, user_id, created_at FROM conversation
+WHERE id = $1 AND user_id = $2;
 
 -- name: CreateMessage :exec
 INSERT INTO messages (con_id,sender,content)

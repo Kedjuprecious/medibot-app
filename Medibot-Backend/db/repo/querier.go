@@ -11,10 +11,11 @@ import (
 )
 
 type Querier interface {
-	CreateConversation(ctx context.Context, userID uuid.UUID) (Conversation, error)
+	CreateConversation(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) error
 	CreateSummaries(ctx context.Context, arg CreateSummariesParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
+	GetConversation(ctx context.Context, arg GetConversationParams) (Conversation, error)
 	GetSummary(ctx context.Context, id uuid.UUID) (Summary, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)

@@ -14,14 +14,14 @@ import (
 const createConversation = `-- name: CreateConversation :one
 INSERT INTO conversation (user_id)
 VALUES ($1)
-RETURNING id, user_id, created_at
+RETURNING id
 `
 
-func (q *Queries) CreateConversation(ctx context.Context, userID uuid.UUID) (Conversation, error) {
+func (q *Queries) CreateConversation(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createConversation, userID)
-	var i Conversation
-	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
-	return i, err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const createMessage = `-- name: CreateMessage :exec
@@ -86,6 +86,23 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.LicenseNumber,
 	)
 	return err
+}
+
+const getConversation = `-- name: GetConversation :one
+SELECT id, user_id, created_at FROM conversation
+WHERE id = $1 AND user_id = $2
+`
+
+type GetConversationParams struct {
+	ID     uuid.UUID `json:"id"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) GetConversation(ctx context.Context, arg GetConversationParams) (Conversation, error) {
+	row := q.db.QueryRow(ctx, getConversation, arg.ID, arg.UserID)
+	var i Conversation
+	err := row.Scan(&i.ID, &i.UserID, &i.CreatedAt)
+	return i, err
 }
 
 const getSummary = `-- name: GetSummary :one
