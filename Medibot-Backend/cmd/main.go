@@ -28,8 +28,8 @@ type DBConfig struct {
 
 // Config holds the application configuration. This struct is populated from the .env in the current directory.
 type Config struct {
-	ListenPort     uint16 `conf:"env:LISTEN_PORT,required"`
-	MigrationsPath string `conf:"env:MIGRATIONS_PATH,required"`
+	ListenPort     uint16   `conf:"env:LISTEN_PORT,required"`
+	MigrationsPath string   `conf:"env:MIGRATIONS_PATH,required"`
 	DB             DBConfig
 }
 
@@ -127,4 +127,4 @@ func getPostgresConnectionURL(config DBConfig) string {
 	}
 	fmt.Println("connection string: ", dbURL.String())
 	return dbURL.String()
-}
+} 
