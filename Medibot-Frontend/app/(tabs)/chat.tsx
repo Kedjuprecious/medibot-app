@@ -1,170 +1,326 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Markdown from 'react-native-markdown-display';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-type Request = {
-  id: number;
-  patientName: string;
-  summary: string; // Brief summary of patient's request
-  photoUri?: string; // Optional patient profile picture URI
+const BACKEND_URL = 'http://<your-server-ip>:<port>'; // Replace with actual backend
+
+const temperature = 0.7;
+
+const systemInstruction = `You are a cardiologist AI expert. ...`; // your full prompt
+
+type Message = {
+  sender: 'user' | 'ai';
+  text: string;
 };
 
-const initialRequests: Request[] = [
-  {
-    id: 1,
-    patientName: 'John Doe',
-    summary: 'I have been experiencing chest pain and shortness of breath.',
-    photoUri: 'https://randomuser.me/api/portraits/men/1.jpg',
-  },
-  {
-    id: 2,
-    patientName: 'Jane Smith',
-    summary: 'Palpitations and dizziness for two days.',
-    photoUri: 'https://randomuser.me/api/portraits/women/2.jpg',
-  },
-];
+type Conversation = {
+  id: number;
+  title: string;
+  messages: Message[];
+};
 
-export default function DoctorRequests() {
+export default function ChatApp() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<number>(1);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+
+  const maxQuestions = 6;
+  const inputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const router = useRouter();
 
-  // State to hold patient requests
-  const [requests, setRequests] = useState<Request[]>(initialRequests);
+  const activeConversation = conversations.find(c => c.id === activeConvId);
 
-  // Track accepted requests by their IDs
-  const [acceptedRequests, setAcceptedRequests] = useState<number[]>([]);
+  useEffect(() => {
+    const load = async () => {
+      const saved = await AsyncStorage.getItem('conversations');
+      if (saved) {
+        setConversations(JSON.parse(saved));
+      } else {
+        setConversations([{ id: 1, title: 'New Conversation', messages: [] }]);
+      }
+    };
+    load();
+  }, []);
 
-  /**
-   * Called when doctor accepts a patient's request
-   * 1. Adds request ID to acceptedRequests (disables accept button)
-   * 2. Shows alert to doctor
-   * 3. Navigates to Chat tab passing patientName and summary as params
-   */
-  const acceptRequest = (id: number, patientName: string, summary: string) => {
-    if (acceptedRequests.includes(id)) {
-      Alert.alert('Request already accepted');
-      return;
-    }
+  useEffect(() => {
+    AsyncStorage.setItem('conversations', JSON.stringify(conversations));
+  }, [conversations]);
 
-    // Add to accepted requests
-    setAcceptedRequests((prev) => [...prev, id]);
-
-    Alert.alert('Request accepted', `You accepted ${patientName}'s request.`);
-
-    console.log(`Routing to chat tab for patient: ${patientName}`);
-
-    // Navigate to Chat tab (passing params)
-    router.replace({
-      pathname: '/(tabs)/chat',
-      params: { patientName, summary },
-    });
-  };
-
-  /**
-   * Renders each patient request card with accept button
-   */
-  const renderItem = ({ item }: { item: Request }) => {
-    const accepted = acceptedRequests.includes(item.id);
-
-    return (
-      <View style={styles.card}>
-        {/* Patient profile picture */}
-        {item.photoUri && (
-          <View style={styles.photoContainer}>
-            <img
-              src={item.photoUri}
-              alt={`${item.patientName} profile`}
-              style={styles.photo}
-            />
-          </View>
-        )}
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.patientName}>{item.patientName}</Text>
-          <Text style={styles.summary} numberOfLines={2}>
-            {item.summary}
-          </Text>
-        </View>
-
-        {/* Accept button - disabled if already accepted */}
-        <TouchableOpacity
-          style={[styles.acceptBtn, accepted && styles.acceptedBtn]}
-          onPress={() => acceptRequest(item.id, item.patientName, item.summary)}
-          disabled={accepted}
-        >
-          <Text style={styles.acceptBtnText}>
-            {accepted ? 'Accepted' : 'Accept'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+  const updateMessages = (convId: number, messages: Message[]) => {
+    setConversations(prev =>
+      prev.map(c =>
+        c.id === convId
+          ? {
+              ...c,
+              messages,
+              title:
+                c.title === 'New Conversation'
+                  ? messages.find(m => m.sender === 'user')?.text.slice(0, 30) || 'New Conversation'
+                  : c.title
+            }
+          : c
+      )
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Patient Requests</Text>
+  const sendMessage = async () => {
+    if (!input.trim() || !activeConversation) return;
 
-      {requests.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginTop: 20 }}>
-          No requests at the moment.
-        </Text>
-      ) : (
-        <FlatList
-          data={requests}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
-      )}
-    </View>
+    const updatedMessages: Message[] = [...activeConversation.messages, { sender: 'user', text: input }];
+    updateMessages(activeConvId, updatedMessages);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          conversationId: activeConvId,
+          message: input,
+        }),
+      });
+
+      const data = await res.json();
+      const reply = data?.response || 'No response.';
+      console.log("Reply from backend:", reply);
+
+      let recommendationText = reply;
+      let summaryText = '';
+      const summaryIndex = reply.toLowerCase().indexOf('summary:');
+      if (summaryIndex !== -1) {
+        recommendationText = reply.slice(0, summaryIndex).trim();
+        summaryText = reply.slice(summaryIndex).trim();
+      }
+
+      const newMessages: Message[] = [...updatedMessages, { sender: 'ai', text: recommendationText }];
+      updateMessages(activeConvId, newMessages);
+      scrollToBottom();
+
+      if (summaryText) {
+        setTyping(true);
+        setTimeout(() => {
+          setConversations(prev =>
+            prev.map(c =>
+              c.id === activeConvId
+                ? {
+                    ...c,
+                    messages: [...c.messages, { sender: 'ai', text: summaryText }]
+                  }
+                : c
+            )
+          );
+          setTyping(false);
+          scrollToBottom();
+          setShowDoctorModal(true);
+        }, 1500);
+      }
+
+      if (questionCount < maxQuestions) {
+        setQuestionCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+      updateMessages(activeConvId, [...updatedMessages, { sender: 'ai', text: 'Error occurred while processing your message.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const scrollToBottom = () => {
+    setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const isInitialEmpty = questionCount === 0 && (activeConversation?.messages.length === 0 || !activeConversation);
+
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => setSidebarOpen(true)}>
+            <Text style={styles.hamburger}>☰</Text>
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>CardioBot</Text>
+        </View>
+
+        <View style={[styles.chatContainer, isInitialEmpty && { justifyContent: 'center', alignItems: 'center' }]}>
+          {isInitialEmpty ? (
+            <Text style={styles.welcomeText}>Start a conversation with CardioBot!</Text>
+          ) : (
+            <ScrollView ref={scrollViewRef} contentContainerStyle={{ padding: 10 }}>
+              {activeConversation?.messages.map((m, i) => (
+                <View key={i} style={m.sender === 'user' ? styles.userMsg : styles.aiMsg}>
+                  <Markdown>{m.text}</Markdown>
+                </View>
+              ))}
+              {typing && (
+                <View style={styles.aiMsg}>
+                  <Text style={{ fontStyle: 'italic', color: '#888' }}>CardioBot is typing...</Text>
+                </View>
+              )}
+            </ScrollView>
+          )}
+
+          <View style={styles.inputArea}>
+            <TextInput
+              ref={inputRef}
+              multiline
+              value={input}
+              onChangeText={setInput}
+              placeholder="Type a message..."
+              style={styles.input}
+              editable={!loading && !typing}
+            />
+            <TouchableOpacity onPress={sendMessage} style={styles.sendBtn} disabled={loading || !input.trim()}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: 'white' }}>Send</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Modal
+          visible={showDoctorModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowDoctorModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Do you want to see a doctor?</Text>
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#0078d4' }]}
+                  onPress={() => {
+                    setShowDoctorModal(false);
+                    router.replace('/(tabs)/doctor');
+                  }}
+                >
+                  <Text style={styles.modalButtonText}>Yes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, { backgroundColor: '#999' }]}
+                  onPress={() => setShowDoctorModal(false)}
+                >
+                  <Text style={styles.modalButtonText}>No, I'm okay</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#f1f6fc' },
-  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#0078d4' },
-  card: {
+  topBar: {
+    height: 50,
+    backgroundColor: '#0078d4',
     flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  hamburger: { color: 'white', fontSize: 24, marginRight: 10 },
+  topTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+  chatContainer: { flex: 1, backgroundColor: '#f9f9f9', justifyContent: 'flex-end' },
+  welcomeText: { fontSize: 20, color: '#888', textAlign: 'center', marginBottom: 20 },
+  userMsg: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#0078d4',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 5,
+    maxWidth: '80%',
+  },
+  aiMsg: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#e5e5ea',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 5,
+    maxWidth: '80%',
+  },
+  inputArea: {
+    flexDirection: 'row',
+    padding: 8,
+    borderTopWidth: 1,
+    borderColor: '#ccc',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
-    elevation: 3,
-    shadowColor: '#0078d4',
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 5,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    marginLeft: 8,
+    backgroundColor: '#0078d4',
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: 5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 16,
+    width: '100%',
+    maxWidth: 340,
     alignItems: 'center',
   },
-  photoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    overflow: 'hidden',
+  modalTitle: {
+    fontSize: 20,
+    marginBottom: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    color: '#222',
   },
-  photo: {
+  modalButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    marginTop: 8,
   },
-  patientName: { fontSize: 18, fontWeight: '600', marginBottom: 6, color: '#222' },
-  summary: { fontSize: 14, color: '#555' },
-  acceptBtn: {
-    backgroundColor: '#28a745',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+  modalButton: {
+    flex: 1,
+    marginHorizontal: 6,
+    paddingVertical: 14,
     borderRadius: 8,
+    alignItems: 'center',
   },
-  acceptedBtn: {
-    backgroundColor: '#aaa',
-  },
-  acceptBtnText: {
+  modalButtonText: {
     color: 'white',
+    fontSize: 16,
     fontWeight: '600',
   },
 });
