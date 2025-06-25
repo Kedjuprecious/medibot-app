@@ -1,7 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
+
 
 export default function DashboardLayout() {
+  const { user, loading } = useAuth();
   return (
     // The Tabs component creates a tab navigator for the app
     // Each Tabs.Screen defines a tab with its name and options
@@ -29,13 +32,16 @@ export default function DashboardLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="medkit" size={size} color={color} />,
         }}
       />
-       <Tabs.Screen
-        name="manageDoctors"
-        options={{
-          title: 'Manage Doctors',
-          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
-        }}
-      />
+      {!loading && user?.role === 'admin' && (
+               <Tabs.Screen
+                name="manageDoctors"
+                options={{
+                title: 'Manage Doctors',
+                tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
+              }}
+              />
+      )}
+
       <Tabs.Screen
         name="chatDoctor"
         options={{
