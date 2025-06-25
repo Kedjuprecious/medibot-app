@@ -30,6 +30,7 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 	}))
 
 	r.POST("/user", h.handleCreateUser)
+	r.GET("/user", h.handleGetUserByEmail)
 	
 	return r
 }
@@ -52,5 +53,22 @@ func (h *MedibotHandler) handleCreateUser(c *gin.Context) {
 		"success": true,
 		"message": "user created successfully",
 	})
+}
+
+//get user by email
+func (h *MedibotHandler) handleGetUserByEmail(c *gin.Context){
+	email := c.Query("email")
+	if email == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email query parameter is required"})
+		return
+	}
+
+	user, err := h.querier.GetUserByEmail(c, email)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, user)
 }
 

@@ -1,35 +1,73 @@
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
 import { createContext, useContext, useEffect, useState } from "react";
+import api from "@/services/api";
+
+// Define a type for your custom user data from the backend
+interface BackendUserData {
+    id: string;
+    email: string;
+    username: string;
+    role: string;
+    experience: string;
+    location: string;
+    license_number: string;
+    created_at: string;
+}
+
+// Extend FirebaseAuthTypes.User with your backend data
+// This ensures that the `user` object in context has all the properties
+export type AppUser = FirebaseAuthTypes.User & BackendUserData;
 
 type AuthContextType = {
-    user: FirebaseAuthTypes.User | null;
+    user: AppUser | null; // Now expects combined user data
     loading: boolean;
-}
+};
 
-//create a new context
-const AuthContext = createContext<AuthContextType>({user: null,loading: true});
+// Create a new context
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
 
-//create a provider that wrap part of the app that needs to the context
-export const AuthProvider = ({children}: any) => {
-    const [user,setUser] = useState<FirebaseAuthTypes.User | null>(null) //the data that needs to be accessed globally within the auth context
-    const [loading, setLoading] = useState(true);
+// Create a provider that wraps parts of the app that need the context
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+    const [user, setUser] = useState<AppUser | null>(null);
+    const [loading, setLoading] = useState(true); // True initially as we're fetching
 
-    useEffect(()=>{
-        const unsubscribe = auth().onAuthStateChanged(currentUser => {
-            setUser(currentUser);
-            setLoading(false);
-        })
+    useEffect(() => {
+        const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+            if (firebaseUser) {
+                // User is signed in with Firebase. Now fetch additional data from your backend.
+                try {
+                    const response = await api.get<BackendUserData>(`/user/${firebaseUser.email}`);
+                    console.log(response.data)
+                    const backendData = response.data;
+
+                    // Combine Firebase user data with backend data
+                    const combinedUser: AppUser = {
+                        ...firebaseUser,
+                        ...backendData,
+                    };
+                    setUser(combinedUser);
+                } catch (error) {
+                    console.error("Failed to fetch user data from backend:", error);
+                    setUser(firebaseUser as AppUser);
+                } finally {
+                    setLoading(false);
+                }
+            } else {
+                // User is signed out
+                setUser(null);
+                setLoading(false);
+            }
+        });
 
         return unsubscribe;
-    },[])
+    }, []);
 
-    return(
-        //wrap children with the provider and pass the current object as its value
-        <AuthContext.Provider value={{user,loading}}>
+    return (
+        <AuthContext.Provider value={{ user, loading }}>
             {children}
         </AuthContext.Provider>
-    )
-}
+    );
+};
 
-//create a hook to access the context easily from any comp
-export const useAuth = () => useContext(AuthContext)
+// Create a hook to access the context easily from any component
+export const useAuth = () => useContext(AuthContext);
