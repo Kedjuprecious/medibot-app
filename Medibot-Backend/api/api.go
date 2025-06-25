@@ -30,7 +30,7 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 	}))
 
 	r.POST("/user", h.handleCreateUser)
-	r.GET("/user", h.handleGetUserByEmail)
+	r.GET("/user/:email", h.handleGetUserByEmail)
 	
 	return r
 }
@@ -57,7 +57,7 @@ func (h *MedibotHandler) handleCreateUser(c *gin.Context) {
 
 //get user by email
 func (h *MedibotHandler) handleGetUserByEmail(c *gin.Context){
-	email := c.Query("email")
+	email := c.Param("email")
 	if email == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email query parameter is required"})
 		return

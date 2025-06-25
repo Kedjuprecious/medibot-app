@@ -36,7 +36,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (firebaseUser) {
                 // User is signed in with Firebase. Now fetch additional data from your backend.
                 try {
-                    const response = await api.get<BackendUserData>(`/user/${firebaseUser.email}`);
+                    const response = await api.get<BackendUserData>("/user", {
+                        params: { email: firebaseUser.email },
+                    });
                     console.log(response.data)
                     const backendData = response.data;
 
