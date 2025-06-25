@@ -6,9 +6,9 @@ export default function Onboarding() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Welcome to TeleMed AI</Text>
+      <Text style={styles.title}>Welcome to SmartDok </Text>
       <Text style={styles.description}>
-        Get expert cardiology recommendations and connect with real doctors.
+        Uncover what may be causing the symptom you are experiencing, and get personalized recommendations.
       </Text>
 
       {/* Button to navigate to the main app */}     

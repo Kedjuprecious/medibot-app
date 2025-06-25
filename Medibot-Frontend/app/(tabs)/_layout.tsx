@@ -29,6 +29,27 @@ export default function DashboardLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="medkit" size={size} color={color} />,
         }}
       />
+       <Tabs.Screen
+        name="manageDoctors"
+        options={{
+          title: 'Manage Doctors',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="chatDoctor"
+        options={{
+          title: 'Chat Doctor',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="patientRequest"
+        options={{
+          title: 'Patient Requests',
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }

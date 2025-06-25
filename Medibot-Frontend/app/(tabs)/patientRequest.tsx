@@ -6,16 +6,19 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
+// Define the Request type for patient requests
 type Request = {
   id: number;
   patientName: string;
-  summary: string; // Brief summary of patient's request
-  photoUri?: string; // Optional patient profile picture URI
+  summary: string;
+  photoUri?: string;
 };
 
+// Initial mock requests data
 const initialRequests: Request[] = [
   {
     id: 1,
@@ -31,20 +34,21 @@ const initialRequests: Request[] = [
   },
 ];
 
+// Main functional component
 export default function DoctorRequests() {
   const router = useRouter();
 
-  // State to hold patient requests
+  // State with explicit generic for TS — type annotation ensures type safety
   const [requests, setRequests] = useState<Request[]>(initialRequests);
 
-  // Track accepted requests by their IDs
+  // Track which requests have been accepted to disable buttons after accepting
   const [acceptedRequests, setAcceptedRequests] = useState<number[]>([]);
 
   /**
-   * Called when doctor accepts a patient's request
-   * 1. Adds request ID to acceptedRequests (disables accept button)
-   * 2. Shows alert to doctor
-   * 3. Navigates to Chat tab passing patientName and summary as params
+   * Accept a patient's request:
+   * - Add request ID to acceptedRequests state
+   * - Show confirmation alert
+   * - Navigate to chat tab, passing patientName and summary as params
    */
   const acceptRequest = (id: number, patientName: string, summary: string) => {
     if (acceptedRequests.includes(id)) {
@@ -52,38 +56,33 @@ export default function DoctorRequests() {
       return;
     }
 
-    // Add to accepted requests
+    // Mark request as accepted
     setAcceptedRequests((prev) => [...prev, id]);
 
     Alert.alert('Request accepted', `You accepted ${patientName}'s request.`);
 
     console.log(`Routing to chat tab for patient: ${patientName}`);
 
-    // Navigate to Chat tab (passing params)
+    // Navigate to Chat screen inside tabs with params (example using expo-router)
     router.replace({
-      pathname: '/(tabs)/chat',
+      pathname: '/(tabs)/chatDoctor',
       params: { patientName, summary },
     });
   };
 
   /**
-   * Renders each patient request card with accept button
+   * Renders a single patient request card
    */
   const renderItem = ({ item }: { item: Request }) => {
     const accepted = acceptedRequests.includes(item.id);
 
     return (
       <View style={styles.card}>
-        {/* Patient profile picture */}
+        {/* Patient profile image */}
         {item.photoUri && (
-          <View style={styles.photoContainer}>
-            <img
-              src={item.photoUri}
-              alt={`${item.patientName} profile`}
-              style={styles.photo}
-            />
-          </View>
+          <Image source={{ uri: item.photoUri }} style={styles.photo} />
         )}
+
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.patientName}>{item.patientName}</Text>
           <Text style={styles.summary} numberOfLines={2}>
@@ -91,7 +90,7 @@ export default function DoctorRequests() {
           </Text>
         </View>
 
-        {/* Accept button - disabled if already accepted */}
+        {/* Accept button; disabled if already accepted */}
         <TouchableOpacity
           style={[styles.acceptBtn, accepted && styles.acceptedBtn]}
           onPress={() => acceptRequest(item.id, item.patientName, item.summary)}
@@ -125,6 +124,7 @@ export default function DoctorRequests() {
   );
 }
 
+// Styles for the component
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f1f6fc' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, color: '#0078d4' },
@@ -141,16 +141,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     alignItems: 'center',
   },
-  photoContainer: {
+  photo: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    overflow: 'hidden',
-  },
-  photo: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
   },
   patientName: { fontSize: 18, fontWeight: '600', marginBottom: 6, color: '#222' },
   summary: { fontSize: 14, color: '#555' },

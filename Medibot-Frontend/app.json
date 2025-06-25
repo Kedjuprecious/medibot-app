@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "medibot",
-    "slug": "medibot",
+    "name": "smartdok",
+    "slug": "smartdok",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -48,7 +48,13 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your friends."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
@@ -56,7 +62,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b031c20d-9b23-468d-a994-3466b63e9e53"
+        "projectId": "183d6f3d-4418-4a9b-9fd1-443f2e3fec49"
       }
     }
   }
