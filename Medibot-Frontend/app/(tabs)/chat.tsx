@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import api from '@/services/api';
+
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,8 +18,8 @@ import {
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 // import Icon from 'react-native-vector-icons/MaterialIcons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext'; // 👈 import your auth context
-import { MaterialIcons} from '@expo/vector-icons';
 
 
 const BACKEND_URL = 'http://<your-server-ip>:<port>'; // Replace with actual backend
@@ -35,6 +37,10 @@ type Conversation = {
   messages: Message[];
 };
 
+type Conversations ={
+  id: string;
+  messages: Message[];
+}
 export default function ChatApp() {
   const { user } = useAuth(); // 👈 get user object
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -45,6 +51,7 @@ export default function ChatApp() {
   const [questionCount, setQuestionCount] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [activeConversations, setActiveConversations] = useState<Conversations | null>(null);
 
   const maxQuestions = 6;
   const inputRef = useRef<TextInput>(null);
@@ -89,6 +96,7 @@ export default function ChatApp() {
 
   const sendMessage = async () => {
     if (!input.trim() || !activeConversation) return;
+    console.log('Sending message:', input);
 
     const updatedMessages: Message[] = [...activeConversation.messages, { sender: 'user', text: input }];
     updateMessages(activeConvId, updatedMessages);
@@ -138,6 +146,25 @@ export default function ChatApp() {
       setLoading(false);
     }
   };
+
+  const handleSubmit = async () => {
+    console.log(user?.id)
+    try {
+      const res = await api.post('/chat',{
+        userId: user?.id,
+        content: input,
+        sender: 'user',
+        conId: activeConversations?.id || "",
+      });
+      if(res.status === 200){
+        console.log(res.data);
+      }else{
+        console.error('Error from API:', res.data);
+      }
+    } catch (error) {
+      console.error('Error handling submit:', error);
+    }
+  }
 
   const scrollToBottom = () => {
     setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
@@ -246,7 +273,7 @@ export default function ChatApp() {
               style={styles.input}
               editable={!loading && !typing}
             />
-            <TouchableOpacity onPress={sendMessage} style={styles.sendBtn} disabled={loading || !input.trim()}>
+            <TouchableOpacity onPress={handleSubmit} style={styles.sendBtn} disabled={loading || !input.trim()}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: 'white' }}>Send</Text>}
             </TouchableOpacity>
           </View>
