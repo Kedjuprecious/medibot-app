@@ -88,6 +88,39 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const getConMessages = `-- name: GetConMessages :many
+SELECT m.id, m.con_id, m.sender, m.content, m.timestamp FROM conversation c
+JOIN messages m 
+ON c.id = m.con_id
+WHERE c.id = $1
+`
+
+func (q *Queries) GetConMessages(ctx context.Context, id uuid.UUID) ([]Message, error) {
+	rows, err := q.db.Query(ctx, getConMessages, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Message{}
+	for rows.Next() {
+		var i Message
+		if err := rows.Scan(
+			&i.ID,
+			&i.ConID,
+			&i.Sender,
+			&i.Content,
+			&i.Timestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getConversation = `-- name: GetConversation :one
 SELECT id, user_id, created_at FROM conversation
 WHERE id = $1 AND user_id = $2

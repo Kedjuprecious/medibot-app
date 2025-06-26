@@ -14,6 +14,7 @@ import (
 	"github.com/joho/godotenv"
 	"medibot.go/api"
 	"medibot.go/db/repo"
+	"medibot.go/gemini"
 )
 
 // DBConfig holds the database configuration. This struct is populated from the .env in the current directory.
@@ -30,6 +31,8 @@ type DBConfig struct {
 type Config struct {
 	ListenPort     uint16   `conf:"env:LISTEN_PORT,required"`
 	MigrationsPath string   `conf:"env:MIGRATIONS_PATH,required"`
+	ApiKey string   `conf:"env:API_KEY,required"`
+	Model string   `conf:"env:DEFAULT_MODEL,required"`
 	DB             DBConfig
 }
 
@@ -74,10 +77,11 @@ func run() error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
+	geminiClient := gemini.NewGeminiClient("https://generativelanguage.googleapis.com/v1beta/models",config.ApiKey,config.Model)
 	querier := repo.New(db)
 
 	// We create a new http handler using the database querier.
-	handler := api.NewMedibotHandler(querier).WireHttpHandler()
+	handler := api.NewMedibotHandler(querier,*geminiClient).WireHttpHandler()
 
 	// And finally we start the HTTP server on the configured port.
 	err = http.ListenAndServe(fmt.Sprintf(":%d", config.ListenPort), handler)

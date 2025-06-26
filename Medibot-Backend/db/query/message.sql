@@ -31,8 +31,9 @@ VALUES ($1,$2,$3,$4);
 -- name: GetSummary :one
 SELECT * FROM summaries WHERE id = $1;
 
--- namw: GetConMessages :many
+-- name: GetConMessages :many
 SELECT m.* FROM conversation c
 JOIN messages m 
 ON c.id = m.con_id
 WHERE c.id = $1;
+

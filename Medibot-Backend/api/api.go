@@ -6,21 +6,25 @@ import (
 	// "strings"
 
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx"
 	"medibot.go/db/repo"
+	"medibot.go/gemini"
 )
 
 type MedibotHandler struct {
 	querier repo.Querier
+	geminiClient gemini.GeminiClient
 }
 
-func NewMedibotHandler(querier repo.Querier) *MedibotHandler {
+func NewMedibotHandler(querier repo.Querier, geminiClient gemini.GeminiClient) *MedibotHandler {
 	return &MedibotHandler{
-		querier: querier,
+		querier:    querier,
+		geminiClient: geminiClient,
 	}
 }
 
@@ -35,6 +39,7 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 	r.POST("/user", h.handleCreateUser)
 	r.GET("/user/", h.handleGetUserByEmail)
 	r.POST("/chat", h.handleConversation)
+	r.GET("/chat/messages", h.handleGetConMessages)
 	
 	return r
 }
@@ -146,10 +151,89 @@ func (h *MedibotHandler) handleConversation(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"conversationId": conID,
-		"message":        "Message stored successfully",
+	//get the messages in that conv
+	messages,err := h.querier.GetConMessages(c,conID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get conversation messages"})
+		return
+	}
+
+	// construct the ai gemini payload content
+	var aiContents []gemini.Content
+
+	//add the system instruction as the first user role content
+	aiContents = append(aiContents, gemini.Content{
+		Role: "user",
+		Parts: []gemini.Part{
+			{Text: gemini.SystemInstruction},
+		},
 	})
+
+	// map db messages to ai content format
+	for _,msg := range messages {
+		aiRole := "user"
+		if msg.Sender == "assistant"{
+			aiRole = "model"
+		}
+
+
+		aiContents = append(aiContents, gemini.Content{
+            Role:  aiRole,
+            Parts: []gemini.Part{{Text: msg.Content}},
+        })
+	}
+
+
+	//prompt the ai
+	aiResponseText,err := h.geminiClient.RequestResponse(aiContents)
+	if err != nil {
+        log.Printf("ERROR: Gemini AI request failed: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "AI service error: " + err.Error()})
+        return
+    }
+
+	    // Save AI's response to the database
+    if err := h.querier.CreateMessage(c.Request.Context(), repo.CreateMessageParams{
+        ConID:   conID,
+        Sender:  "assistant", // This must match your DB CHECK constraint
+        Content: aiResponseText,
+    }); err != nil {
+        log.Printf("ERROR: Failed to create AI response message: %v", err)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save AI response"})
+        return
+    }
+
+	// Respond to frontend
+    responsePayload := gin.H{
+        "conversationId": conID.String(),
+        "aiResponse":     aiResponseText, // Send the actual AI response text
+        "message":        "Message processed successfully",
+    }
+
+	 c.JSON(http.StatusOK, responsePayload)
+}
+
+//get all the messages in a conversation
+func (h *MedibotHandler) handleGetConMessages(c *gin.Context) {
+	conIDStr := c.Query("conId")
+	if conIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conId query parameter is required"})
+		return
+	}
+
+	conID, err := uuid.Parse(conIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+		return
+	}
+
+	messages, err := h.querier.GetConMessages(c, conID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get conversation messages"})
+		return
+	}
+
+	c.JSON(http.StatusOK, messages)
 }
 
 
