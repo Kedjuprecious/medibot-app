@@ -40,6 +40,7 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 	r.GET("/user/", h.handleGetUserByEmail)
 	r.POST("/chat", h.handleConversation)
 	r.GET("/chat/messages", h.handleGetConMessages)
+	r.GET("/conversations", h.handleUserConvAndMessages)
 	
 	return r
 }
@@ -221,11 +222,11 @@ func (h *MedibotHandler) handleGetConMessages(c *gin.Context) {
 		return
 	}
 
-	conID, err := uuid.Parse(conIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
-		return
-	}
+		conID, err := uuid.Parse(conIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+			return
+		}
 
 	messages, err := h.querier.GetConMessages(c, conID)
 	if err != nil {
@@ -234,6 +235,29 @@ func (h *MedibotHandler) handleGetConMessages(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, messages)
+}
+
+//get all users conversations and messages
+func (h *MedibotHandler) handleUserConvAndMessages(c *gin.Context){
+	userId := c.Query("userId")
+	if userId == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conId query parameter is required"})
+		return
+	}
+
+	userID, err := uuid.Parse(userId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+		return
+	}
+	
+	conv, err := h.querier.ListFullConversationsByUserID(c,userID)
+	if err !=nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "userid query parameter is required"})
+		return
+	}
+
+	c.JSON(http.StatusOK, conv)
 }
 
 

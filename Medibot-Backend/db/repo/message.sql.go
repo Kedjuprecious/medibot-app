@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createConversation = `-- name: CreateConversation :one
@@ -196,4 +197,58 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listFullConversationsByUserID = `-- name: ListFullConversationsByUserID :many
+SELECT
+    c.id AS conversation_id,
+    c.created_at AS conversation_created_at,
+    m.id AS message_id,
+    m.sender AS message_sender,
+    m.content AS message_content,
+    m.timestamp AS message_timestamp
+FROM
+    conversation c
+LEFT JOIN
+    messages m ON c.id = m.con_id
+WHERE
+    c.user_id = $1
+ORDER BY
+    c.created_at DESC, m.timestamp ASC
+`
+
+type ListFullConversationsByUserIDRow struct {
+	ConversationID        uuid.UUID        `json:"conversation_id"`
+	ConversationCreatedAt pgtype.Timestamp `json:"conversation_created_at"`
+	MessageID             uuid.UUID        `json:"message_id"`
+	MessageSender         string           `json:"message_sender"`
+	MessageContent        string           `json:"message_content"`
+	MessageTimestamp      pgtype.Timestamp `json:"message_timestamp"`
+}
+
+func (q *Queries) ListFullConversationsByUserID(ctx context.Context, userID uuid.UUID) ([]ListFullConversationsByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listFullConversationsByUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFullConversationsByUserIDRow{}
+	for rows.Next() {
+		var i ListFullConversationsByUserIDRow
+		if err := rows.Scan(
+			&i.ConversationID,
+			&i.ConversationCreatedAt,
+			&i.MessageID,
+			&i.MessageSender,
+			&i.MessageContent,
+			&i.MessageTimestamp,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

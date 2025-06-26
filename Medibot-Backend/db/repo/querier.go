@@ -20,6 +20,7 @@ type Querier interface {
 	GetSummary(ctx context.Context, id uuid.UUID) (Summary, error)
 	GetUser(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
+	ListFullConversationsByUserID(ctx context.Context, userID uuid.UUID) ([]ListFullConversationsByUserIDRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

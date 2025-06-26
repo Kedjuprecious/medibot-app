@@ -37,3 +37,19 @@ JOIN messages m
 ON c.id = m.con_id
 WHERE c.id = $1;
 
+-- name: ListFullConversationsByUserID :many
+SELECT
+    c.id AS conversation_id,
+    c.created_at AS conversation_created_at,
+    m.id AS message_id,
+    m.sender AS message_sender,
+    m.content AS message_content,
+    m.timestamp AS message_timestamp
+FROM
+    conversation c
+LEFT JOIN
+    messages m ON c.id = m.con_id
+WHERE
+    c.user_id = $1
+ORDER BY
+    c.created_at DESC, m.timestamp ASC;
