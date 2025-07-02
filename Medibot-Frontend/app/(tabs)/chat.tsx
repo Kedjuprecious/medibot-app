@@ -1,23 +1,24 @@
+import api from '@/services/api';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
+  ActivityIndicator, // For dismissing sidebar by tapping outside
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView, // For better error feedback
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
+  TouchableOpacity, // For sidebar width
+  TouchableWithoutFeedback,
   View,
-  Dimensions, // For sidebar width
-  TouchableWithoutFeedback, // For dismissing sidebar by tapping outside
-  Alert, // For better error feedback
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
-import api from '@/services/api';
 import { useAuth } from '../context/AuthContext';
-import { MaterialIcons } from '@expo/vector-icons';
 
 // --- Types ---
 type Message = {
@@ -47,6 +48,8 @@ export default function ChatAppDesign() {
   const [isProcessingMessage, setIsProcessingMessage] = useState(false); // For AI 'thinking' effect
   const [isLoadingConversations, setIsLoadingConversations] = useState(true); // New state for initial fetch
   const [showSidebar, setShowSidebar] = useState(false); // State to control sidebar visibility
+  const [showDoctorPromptModal, setShowDoctorPromptModal] = useState(false); // Sate to control visibility of prompt to consult a doctor
+
 
   // --- Refs for UI Interaction ---
   const inputRef = useRef<TextInput>(null);
@@ -229,6 +232,12 @@ export default function ChatAppDesign() {
 
       const newAiMessage: Message = { sender: 'assistant', text: aiResponse };
 
+      // --- Check if this message is a summary ---
+      const containsSummary = aiResponse.toLowerCase().includes('summary:');
+      if (containsSummary) {
+        setShowDoctorPromptModal(true);
+      }
+
       // Update state with AI's response and ensure correct conversation ID is set
       setConversations(prevConvs => {
         return prevConvs.map(conv => {
@@ -365,14 +374,14 @@ export default function ChatAppDesign() {
             <Text style={styles.welcomeTitle}>CardioBot</Text>
             <Text style={styles.welcomeSubtitle}>How can I help you today?</Text>
             <View style={styles.examplePromptsContainer}>
-              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('Explain heart disease'); handleSend(); }}>
-                <Text style={styles.examplePromptText}>Explain heart disease</Text>
+              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('I have a chest pain'); handleSend(); }}>
+                <Text style={styles.examplePromptText}>I have a chest pain</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('Symptoms of a heart attack'); handleSend(); }}>
-                <Text style={styles.examplePromptText}>Symptoms of a heart attack</Text>
+              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('I have difficulty in breathing'); handleSend(); }}>
+                <Text style={styles.examplePromptText}>I have difficulty in breathing</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('Healthy diet for heart'); handleSend(); }}>
-                <Text style={styles.examplePromptText}>Healthy diet for heart</Text>
+              <TouchableOpacity style={styles.examplePromptCard} onPress={() => { setInput('How do I care for my heart?'); handleSend(); }}>
+                <Text style={styles.examplePromptText}>How do I care for my heart?</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -423,6 +432,59 @@ export default function ChatAppDesign() {
         </View>
         <Text style={styles.disclaimerText}>CardioBot can make mistakes. Consider checking important information.</Text>
       </View>
+
+      <Modal
+        visible={showDoctorPromptModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDoctorPromptModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.6)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: 20,
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            borderRadius: 10,
+            padding: 25,
+            width: '90%',
+            alignItems: 'center'
+          }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 15 }}>Would you like to continue with a cardiologist?</Text>
+            <View style={{ flexDirection: 'row', marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowDoctorPromptModal(false);
+                  router.push('/doctor');
+                }}
+                style={{
+                  backgroundColor: '#19c37d',
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 8,
+                  marginRight: 10,
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Yes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowDoctorPromptModal(false)}
+                style={{
+                  backgroundColor: '#ccc',
+                  paddingVertical: 10,
+                  paddingHorizontal: 20,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#8B0000', fontWeight: 'bold' }}>No</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

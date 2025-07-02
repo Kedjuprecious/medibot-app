@@ -67,7 +67,7 @@ export default function DashboardHome() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.welcome}>Welcome, {user?.role}</Text>
+        <Text style={styles.welcome}>Welcome, {user?.username}</Text>
         <TouchableOpacity onPress={() => setMenuVisible(true)}>
           <Icon name="menu" size={28} color="#004AAD" />
         </TouchableOpacity>
