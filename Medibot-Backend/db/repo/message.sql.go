@@ -89,6 +89,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteConversation = `-- name: DeleteConversation :exec
+DELETE FROM conversation 
+WHERE id = $1
+`
+
+func (q *Queries) DeleteConversation(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteConversation, id)
+	return err
+}
+
 const getConMessages = `-- name: GetConMessages :many
 SELECT m.id, m.con_id, m.sender, m.content, m.timestamp FROM conversation c
 JOIN messages m 

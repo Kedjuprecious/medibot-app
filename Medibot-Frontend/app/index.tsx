@@ -14,8 +14,8 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>TeleMed AI</Text>
-      <Text style={styles.subtitle}>Bridging you to better health...</Text>
+      <Text style={styles.title}>SmartDok</Text>
+      <Text style={styles.subtitle}>Bridging you to faster health care...</Text>
     </View>
   );
 }

@@ -53,3 +53,7 @@ WHERE
     c.user_id = $1
 ORDER BY
     c.created_at DESC, m.timestamp ASC;
+
+-- name: DeleteConversation :exec
+DELETE FROM conversation 
+WHERE id = $1;

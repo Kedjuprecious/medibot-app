@@ -26,13 +26,49 @@ export default function SignUp() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSignup = async () => {
-    setLoading(true);
-    if (password !== confirmPassword) {
-      Alert.alert("Passwords do not match");
-      setLoading(false);
-      return;
+  // Validation error messages
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+
+  // Regex for password
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+
+  const validate = () => {
+    let valid = true;
+
+    // Email validation
+    if (!email.includes('@')) {
+      setEmailError('Please enter a valid email.');
+      valid = false;
+    } else {
+      setEmailError('');
     }
+
+    // Password validation
+    if (!passwordRegex.test(password)) {
+      setPasswordError('Password must be at least 8 characters, with upper, lower, and number.');
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+
+    // Confirm password validation
+    if (password !== confirmPassword) {
+      setConfirmPasswordError('Passwords do not match.');
+      valid = false;
+    } else {
+      setConfirmPasswordError('');
+    }
+
+    return valid;
+  };
+
+  const handleSignup = async () => {
+    if (!validate()) return;
+
+    setLoading(true);
+
     try {
       const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       const res = await api.post("/user", {
@@ -55,6 +91,7 @@ export default function SignUp() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create an Account</Text>
+
       <TextInput
         style={styles.input}
         placeholderTextColor="#000"
@@ -62,38 +99,62 @@ export default function SignUp() {
         placeholder="Username"
         autoCapitalize="words"
       />
+
       <TextInput
-        style={styles.input}
+        style={[styles.input, emailError ? styles.errorInput : null]}
         placeholderTextColor="#000"
         onChangeText={setEmail}
         placeholder="Email"
         keyboardType="email-address"
         autoCapitalize="none"
+        onBlur={() => {
+          if (!email.includes('@')) setEmailError('Please enter a valid email.');
+          else setEmailError('');
+        }}
       />
-      <View style={styles.passwordContainer}>
+      {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+
+      <View style={[styles.passwordContainer, passwordError ? styles.errorInput : null]}>
         <TextInput
           style={styles.passwordInput}
           placeholder="Password"
           placeholderTextColor="#000"
           secureTextEntry={!showPassword}
           onChangeText={setPassword}
+          onBlur={() => {
+            if (!passwordRegex.test(password)) {
+              setPasswordError('Password must be at least 8 characters, with upper, lower, and number.');
+            } else {
+              setPasswordError('');
+            }
+          }}
         />
         <TouchableOpacity onPress={() => setShowPassword(prev => !prev)}>
           <Icon name={showPassword ? 'visibility' : 'visibility-off'} size={24} color="#555" />
         </TouchableOpacity>
       </View>
-      <View style={styles.passwordContainer}>
+      {passwordError ? <Text style={styles.errorText}>{passwordError}</Text> : null}
+
+      <View style={[styles.passwordContainer, confirmPasswordError ? styles.errorInput : null]}>
         <TextInput
           style={styles.passwordInput}
           placeholder="Confirm Password"
           placeholderTextColor="#000"
           secureTextEntry={!showConfirmPassword}
           onChangeText={setConfirmPassword}
+          onBlur={() => {
+            if (confirmPassword !== password) {
+              setConfirmPasswordError('Passwords do not match.');
+            } else {
+              setConfirmPasswordError('');
+            }
+          }}
         />
         <TouchableOpacity onPress={() => setShowConfirmPassword(prev => !prev)}>
           <Icon name={showConfirmPassword ? 'visibility' : 'visibility-off'} size={24} color="#555" />
         </TouchableOpacity>
       </View>
+      {confirmPasswordError ? <Text style={styles.errorText}>{confirmPasswordError}</Text> : null}
 
       <TouchableOpacity style={styles.primaryButton} onPress={handleSignup}>
         <Text style={styles.primaryButtonText}>Sign Up</Text>
@@ -131,7 +192,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -140,7 +201,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#ccc',
-    marginBottom: 16,
+    marginBottom: 8,
     paddingHorizontal: 12,
   },
   passwordInput: {
@@ -153,6 +214,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 8,
     alignItems: 'center',
+    marginTop: 16,
     marginBottom: 16,
   },
   primaryButtonText: {
@@ -164,5 +226,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#004AAD',
     fontWeight: '500',
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 8,
+    marginLeft: 4,
+    fontSize: 12,
+  },
+  errorInput: {
+    borderColor: 'red',
   },
 });

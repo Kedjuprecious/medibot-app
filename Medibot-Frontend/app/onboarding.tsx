@@ -12,9 +12,9 @@ export default function Onboarding() {
       </Text>
 
       {/* Button to navigate to the main app */}     
-      <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)')}>
+      {/* <TouchableOpacity style={styles.loginButton} onPress={() => router.replace('/(tabs)')}>
         <Text style={styles.buttonText}>Get Started</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Login Button */}
       <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>

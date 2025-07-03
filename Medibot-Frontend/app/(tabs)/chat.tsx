@@ -13,9 +13,8 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity, // For sidebar width
-  TouchableWithoutFeedback,
-  View,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { useAuth } from '../context/AuthContext';
@@ -291,6 +290,38 @@ export default function ChatAppDesign() {
     }
   };
 
+  // --- Handle Deleting a Conversation ---
+  const handleDeleteConversation = async (convId: string) => {
+  Alert.alert(
+    "Delete Chat",
+    "Are you sure you want to delete this conversation?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await api.delete('/conversation', {
+              params: { conId: convId },
+            });
+
+            setConversations(prev => prev.filter(c => c.id !== convId));
+
+            if (activeConvId === convId) {
+              handleNewConversation(); // fallback
+            }
+          } catch (error) {
+            console.error("Failed to delete conversation:", error);
+            Alert.alert("Error", "Could not delete the conversation.");
+          }
+        },
+      },
+    ]
+  );
+};
+
+
 
   // --- Determine if welcome screen should be shown ---
   const showWelcomeScreen =
@@ -313,48 +344,53 @@ export default function ChatAppDesign() {
       style={styles.container}
     >
       {/* Sidebar Overlay */}
-      {showSidebar && (
-        <TouchableWithoutFeedback onPress={() => setShowSidebar(false)}>
-          <View style={styles.sidebarOverlay} />
-        </TouchableWithoutFeedback>
-      )}
 
-      {/* Sidebar */}
-      <View style={[styles.sidebar, { left: showSidebar ? 0 : -SIDEBAR_WIDTH }]}>
-        <View style={styles.sidebarHeader}>
-          <Text style={styles.sidebarTitle}>Chats</Text>
-          <TouchableOpacity onPress={() => setShowSidebar(false)} style={styles.sidebarCloseButton}>
-            <MaterialIcons name="close" size={24} color="#fff" />
+      {showSidebar && (
+  <View style={[styles.sidebar, { left: showSidebar ? 0 : -SIDEBAR_WIDTH }]}>
+    <View style={styles.sidebarHeader}>
+      <Text style={styles.sidebarTitle}>Chats</Text>
+      <TouchableOpacity onPress={() => setShowSidebar(false)} style={styles.sidebarCloseButton}>
+        <MaterialIcons name="close" size={24} color="#fff" />
+      </TouchableOpacity>
+    </View>
+    <TouchableOpacity onPress={handleNewConversation} style={styles.newChatButtonSidebar}>
+      <MaterialIcons name="add" size={20} color="#fff" />
+      <Text style={styles.newChatButtonText}>New Chat</Text>
+    </TouchableOpacity>
+    <ScrollView style={styles.conversationList}>
+      {conversations.map(conv => (
+        <View
+          key={conv.id}
+          style={[
+            styles.conversationListItem,
+            activeConvId === conv.id && styles.activeConversationListItem,
+            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+          ]}
+        >
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => handleSelectConversation(conv.id)}
+          >
+            <Text
+              style={[
+                styles.conversationListItemText,
+                activeConvId === conv.id && styles.activeConversationListItemText,
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {conv.title}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => handleDeleteConversation(conv.id)}>
+            <MaterialIcons name="delete" size={20} color="#ff4d4f" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
         </View>
-        <TouchableOpacity onPress={handleNewConversation} style={styles.newChatButtonSidebar}>
-            <MaterialIcons name="add" size={20} color="#fff" />
-            <Text style={styles.newChatButtonText}>New Chat</Text>
-        </TouchableOpacity>
-        <ScrollView style={styles.conversationList}>
-          {conversations.map(conv => (
-            <TouchableOpacity
-              key={conv.id}
-              style={[
-                styles.conversationListItem,
-                activeConvId === conv.id && styles.activeConversationListItem,
-              ]}
-              onPress={() => handleSelectConversation(conv.id)}
-            >
-              <Text
-                style={[
-                  styles.conversationListItemText,
-                  activeConvId === conv.id && styles.activeConversationListItemText,
-                ]}
-                numberOfLines={1} // Ensures title stays on one line
-                ellipsizeMode="tail" // Adds "..." if text overflows
-              >
-                {conv.title}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      ))}
+    </ScrollView>
+  </View>
+)}
 
       {/* Main Chat Content */}
       <View style={styles.topBar}>

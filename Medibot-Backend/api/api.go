@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"time"
 
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx"
@@ -42,7 +44,9 @@ func (h *MedibotHandler) WireHttpHandler() http.Handler {
 	r.POST("/chat", h.handleConversation)
 	r.GET("/chat/messages", h.handleGetConMessages)
 	r.GET("/conversations", h.handleUserConvAndMessages)
-	
+	r.DELETE("/conversation", h.handleDeleteConversation)
+	r.GET("/summary", h.handleGetSummary)
+
 	return r
 }
 
@@ -89,6 +93,9 @@ type createConversationParams struct {
 	Sender string `json:"sender"`
 	ConId string `json:"conId"` // Optional, if provided, will update the conversation
 }
+
+// create or update conversation and handle messages
+// If conId is provided, it will check if the conversation exists and update it.
 //handle conversation
 func (h *MedibotHandler) handleConversation(c *gin.Context) {
 	var req createConversationParams
@@ -204,6 +211,20 @@ func (h *MedibotHandler) handleConversation(c *gin.Context) {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save AI response"})
         return
     }
+
+	// Check if response starts with "summary" (case-insensitive) and save as summary
+	if strings.HasPrefix(strings.ToLower(aiResponseText), "summary") {
+		err := h.querier.CreateSummaries(c.Request.Context(), repo.CreateSummariesParams{
+			Content:        aiResponseText,
+			ConversationID: conID,
+			PatientID:      userID,
+			DoctorID:       uuid.Nil, // no doctor ID provided, using zero UUID
+		})
+		if err != nil {
+			log.Printf("ERROR: Failed to create summary: %v", err)
+			// Optionally, do NOT block response to frontend, just log
+		}
+	}
 
 	// Respond to frontend
     responsePayload := gin.H{
@@ -352,3 +373,50 @@ func (h *MedibotHandler) handleUserConvAndMessages(c *gin.Context) {
 }
 
 
+// Delete Conversation
+func (h *MedibotHandler) handleDeleteConversation(c *gin.Context) {
+	conIDStr := c.Query("conId")
+	if conIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "conId query parameter is required"})
+		return
+	}
+
+	conID, err := uuid.Parse(conIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid conversation ID"})
+		return
+	}
+
+	err = h.querier.DeleteConversation(c, conID)
+	if err != nil {
+		log.Printf("ERROR: Failed to delete conversation %s: %v", conID.String(), err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete conversation"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Conversation deleted successfully"})
+}
+
+// Get Summary
+func (h *MedibotHandler) handleGetSummary(c *gin.Context) {
+	summaryIDStr := c.Query("id")
+	if summaryIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id query parameter is required"})
+		return
+	}
+
+	summaryID, err := uuid.Parse(summaryIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid summary ID"})
+		return
+	}
+
+	summary, err := h.querier.GetSummary(c, summaryID)
+	if err != nil {
+		log.Printf("ERROR: Failed to get summary %s: %v", summaryID.String(), err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve summary"})
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}

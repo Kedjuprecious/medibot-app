@@ -15,6 +15,7 @@ type Querier interface {
 	CreateMessage(ctx context.Context, arg CreateMessageParams) error
 	CreateSummaries(ctx context.Context, arg CreateSummariesParams) error
 	CreateUser(ctx context.Context, arg CreateUserParams) error
+	DeleteConversation(ctx context.Context, id uuid.UUID) error
 	GetConMessages(ctx context.Context, id uuid.UUID) ([]Message, error)
 	GetConversation(ctx context.Context, arg GetConversationParams) (Conversation, error)
 	GetSummary(ctx context.Context, id uuid.UUID) (Summary, error)

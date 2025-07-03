@@ -28,7 +28,7 @@ export default function ChatScreen() {
 
   // Initialize messages with patient summary as first message
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'patient', text: summary || 'No summary available' },
+    { id: '1', sender: 'patient', text: summary || 'No summaryc' },
   ]);
   const [input, setInput] = useState('');
 
