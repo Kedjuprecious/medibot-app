@@ -76,7 +76,7 @@ export default function DashboardHome() {
       {/* Avatar */}
       <View style={styles.avatarContainer}>
         <Image
-          source={{ uri: 'https://i.pravatar.cc/100' }}
+          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYFpUk06WfKt7Lsamieycm_v34XpwSG9fwBw&s' }}
           style={styles.avatar}
         />
       </View>

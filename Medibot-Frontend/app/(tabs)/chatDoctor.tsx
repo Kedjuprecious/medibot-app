@@ -28,7 +28,7 @@ export default function ChatScreen() {
 
   // Initialize messages with patient summary as first message
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'patient', text: summary || 'No summaryc' },
+    { id: '1', sender: 'patient', text: summary || 'Summary: The patient reports sharp chest pain without radiation. While the description does not immediately point to a cardiac event, further investigation is needed. Recommended actions include lifestyle adjustments (gentle stretching, avoiding strenuous activity), considering over-the-counter pain relief, and scheduling an ECG to rule out cardiac causes. If the pain worsens or is accompanied by other concerning symptoms, immediate medical attention is crucial. A consultation with a cardiologist or primary care physician is advised for a comprehensive evaluation.' },
   ]);
   const [input, setInput] = useState('');
 
