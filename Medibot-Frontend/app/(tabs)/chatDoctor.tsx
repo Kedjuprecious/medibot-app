@@ -8,10 +8,9 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 
 type Message = {
   id: string;
@@ -19,22 +18,23 @@ type Message = {
   text: string;
 };
 
-export default function ChatScreen() {
-  const router = useRouter();
-  const { patientName, summary } = useLocalSearchParams() as {
-    patientName: string;
-    summary: string;
-  };
+export default function ChatDoctor() {
+  const { patientName } = useLocalSearchParams() as { patientName: string };
 
-  // Initialize messages with patient summary as first message
+  // Hardcoded full summary string
+  const hardcodedSummary = `Patient reports persistent chest pain and shortness of breath lasting 3 days. No history of trauma or previous heart disease. Blood pressure elevated at 150/95 mmHg. Recommended further ECG and cardiology consult. Immediate medication includes aspirin and beta-blockers as needed.`;
+
+  // Initialize messages with hardcoded summary as first message
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', sender: 'patient', text: summary || 'Summary: The patient reports sharp chest pain without radiation. While the description does not immediately point to a cardiac event, further investigation is needed. Recommended actions include lifestyle adjustments (gentle stretching, avoiding strenuous activity), considering over-the-counter pain relief, and scheduling an ECG to rule out cardiac causes. If the pain worsens or is accompanied by other concerning symptoms, immediate medical attention is crucial. A consultation with a cardiologist or primary care physician is advised for a comprehensive evaluation.' },
+    {
+      id: 'summary-1',
+      sender: 'patient',
+      text: `📝 Summary:\n\n${hardcodedSummary}`,
+    },
   ]);
+
   const [input, setInput] = useState('');
 
-  /**
-   * Send message handler: adds a doctor message to the chat
-   */
   const sendMessage = () => {
     if (input.trim() === '') return;
 
@@ -46,19 +46,19 @@ export default function ChatScreen() {
 
     setMessages((prev) => [...prev, newMsg]);
     setInput('');
-    console.log(`Sent message: ${newMsg.text}`);
   };
 
-  /**
-   * Render each message bubble styled based on sender
-   */
   const renderMessage = ({ item }: { item: Message }) => {
     const isPatient = item.sender === 'patient';
+
     return (
       <View
         style={[
           styles.messageContainer,
-          isPatient ? styles.patientMessage : styles.doctorMessage,
+          {
+            backgroundColor: '#0078d4',
+            alignSelf: isPatient ? 'flex-start' : 'flex-end',
+          },
         ]}
       >
         <Text style={styles.messageText}>{item.text}</Text>
@@ -66,16 +66,12 @@ export default function ChatScreen() {
     );
   };
 
-  /**
-   * Handlers for call buttons, show alert for now
-   */
   const onPressVideoCall = () => {
-    Alert.alert('Video Call', `Starting video call with ${patientName}...`);
-    console.log('Video call pressed');
+    alert(`Starting video call with ${patientName || 'patient'}...`);
   };
+
   const onPressAudioCall = () => {
-    Alert.alert('Audio Call', `Starting audio call with ${patientName}...`);
-    console.log('Audio call pressed');
+    alert(`Starting audio call with ${patientName || 'patient'}...`);
   };
 
   return (
@@ -84,7 +80,7 @@ export default function ChatScreen() {
       behavior={Platform.select({ ios: 'padding', android: undefined })}
       keyboardVerticalOffset={80}
     >
-      {/* Header: patient name + call buttons */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.patientName}>{patientName || 'Unknown Patient'}</Text>
         <View style={styles.callButtons}>
@@ -99,15 +95,14 @@ export default function ChatScreen() {
 
       {/* Chat messages */}
       <FlatList
-        data={messages}
+        data={[...messages].reverse()}
         keyExtractor={(item) => item.id}
         renderItem={renderMessage}
         contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
-        inverted
         style={{ flex: 1 }}
       />
 
-      {/* Input box for doctor's message */}
+      {/* Input area */}
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
@@ -149,16 +144,8 @@ const styles = StyleSheet.create({
     padding: 12,
     marginVertical: 6,
   },
-  patientMessage: {
-    backgroundColor: '#e0e0e0',
-    alignSelf: 'flex-start',
-  },
-  doctorMessage: {
-    backgroundColor: '#0078d4',
-    alignSelf: 'flex-end',
-  },
   messageText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 16,
   },
   inputContainer: {
